@@ -2,18 +2,18 @@ name: Build and Deploy
 
 on:
   push:
-    paths:
-      - "src/**"
-      - "!**.qml"
-      - "!**.md"
-      - "!**.cmake"
+    # paths:
+    #   - "src/**"
+    #   - "!**.qml"
+    #   - "!**.md"
+    #   - "!**.cmake"
 
   pull_request:
-    paths:
-      - "src/**"
-      - "!**.qml"
-      - "!**.md"
-      - "!**.cmake"
+    # paths:
+    #   - "src/**"
+    #   - "!**.qml"
+    #   - "!**.md"
+    #   - "!**.cmake"
 
 permissions: write-all
 
@@ -66,12 +66,18 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel
 
+      - name: Package (Linux)
+        run: |
+          cmake --install ${{ github.workspace }} --prefix ${{ env.Qt6_DIR }}
+          for l in $(find ${{ env.Qt6_DIR }} -type f); do l=${l#$(pwd)/}; l=${l#${{ env.Qt6_DIR }}/}; l=${l#./}; echo $l; done > ${{ env.Qt6_DIR }}/manifest.txt
+          tar --owner root --group root -czf ./${{ env.TARGET }}.tar.gz ${{ env.Qt6_DIR }}/*
+
       - name: Install Qt Linux Deploy
         uses: miurahr/install-linuxdeploy-action@v1
         with:
           plugins: qt appimage
 
-      - name: Package
+      - name: Package Appimage
         if: startsWith(github.event.ref, 'refs/tags/')
         env:
           EXTRA_QT_PLUGINS: qt5compat
@@ -86,13 +92,27 @@ jobs:
           linuxdeploy-x86_64.AppImage --plugin=qt --output=appimage --desktop-file=SAST_Evento.desktop --icon-file=app_icon.svg --executable=bin/release/SAST_Evento_Desktop --appdir AppDir
           mv ${{ env.fileName }}-*.AppImage ${{ env.TARGET }}.AppImage
           
-      - uses: actions/upload-artifact@v2
-        if: startsWith(github.event.ref, 'refs/tags/')
+      - uses: actions/upload-artifact@v3
+        with:
+          name: SAST_Evento_Linux
+          path: ${{ env.TARGET }}.tar.gz
+
+      - uses: actions/upload-artifact@v3
         with:
           name: SAST_Evento_AppImage
           path: ${{ env.TARGET }}.AppImage
 
-      - name: uploadRelease
+      - name: Upload Release (Linux)
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.TARGET }}.tar.gz
+          asset_name: ${{ env.fileName }}_Linux.tar.gz
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload Release (AppImage)
         if: startsWith(github.event.ref, 'refs/tags/')
         uses: svenstaro/upload-release-action@v2
         with:

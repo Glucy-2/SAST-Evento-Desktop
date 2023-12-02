@@ -68,7 +68,7 @@ jobs:
 
       - name: Package (Linux)
         run: |
-          cmake --install ${{ github.workspace }} --prefix ${{ env.Qt6_DIR }}
+          cmake --install ${{github.workspace}}/build --prefix ${{ env.Qt6_DIR }}
           for l in $(find ${{ env.Qt6_DIR }} -type f); do l=${l#$(pwd)/}; l=${l#${{ env.Qt6_DIR }}/}; l=${l#./}; echo $l; done > ${{ env.Qt6_DIR }}/manifest.txt
           tar --owner root --group root -czf ./${{ env.TARGET }}.tar.gz ${{ env.Qt6_DIR }}/*
 
